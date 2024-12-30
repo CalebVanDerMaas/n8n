@@ -1,4 +1,5 @@
 import type { INodeExecutionData, INodeProperties } from 'n8n-workflow';
+
 import { sendErrorPostReceive } from './GenericFunctions';
 
 export const imageOperations: INodeProperties[] = [
@@ -114,6 +115,68 @@ const createOperations: INodeProperties[] = [
 			show: {
 				resource: ['image'],
 				operation: ['create'],
+				'@version': [1],
+			},
+		},
+		routing: {
+			send: {
+				type: 'body',
+				property: 'model',
+			},
+		},
+	},
+	{
+		displayName: 'Model',
+		name: 'imageModel',
+		type: 'options',
+		default: 'dall-e-2',
+		description: 'The model to use for image generation',
+		typeOptions: {
+			loadOptions: {
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/v1/models',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'data',
+								},
+							},
+							{
+								type: 'filter',
+								properties: {
+									pass: "={{ $responseItem.id.startsWith('dall-') }}",
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.id}}',
+									value: '={{$responseItem.id}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'name',
+								},
+							},
+						],
+					},
+				},
+			},
+		},
+		displayOptions: {
+			show: {
+				resource: ['image'],
+				operation: ['create'],
+			},
+			hide: {
+				'@version': [1],
 			},
 		},
 		routing: {
@@ -137,7 +200,7 @@ const createOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Binary Data',
+				name: 'Binary File',
 				value: 'binaryData',
 			},
 			{
@@ -180,7 +243,7 @@ const createOperations: INodeProperties[] = [
 	{
 		displayName: 'Options',
 		name: 'options',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		description: 'Additional options to add',
 		type: 'collection',
 		default: {},

@@ -4,9 +4,8 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { updateDisplayOptions } from '../../../../../utils/utilities';
-import { discordApiMultiPartRequest, discordApiRequest } from '../../transport';
 
+import { updateDisplayOptions } from '../../../../../utils/utilities';
 import {
 	parseDiscordError,
 	prepareEmbeds,
@@ -14,7 +13,7 @@ import {
 	prepareMultiPartForm,
 	prepareOptions,
 } from '../../helpers/utils';
-
+import { discordApiMultiPartRequest, discordApiRequest } from '../../transport';
 import { embedsFixedCollection, filesFixedCollection } from '../common.description';
 
 const properties: INodeProperties[] = [
@@ -23,7 +22,6 @@ const properties: INodeProperties[] = [
 		name: 'content',
 		type: 'string',
 		default: '',
-		required: true,
 		description: 'The content of the message (up to 2000 characters)',
 		placeholder: 'e.g. My message',
 		typeOptions: {
@@ -34,7 +32,7 @@ const properties: INodeProperties[] = [
 		displayName: 'Options',
 		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add option',
 		default: {},
 		options: [
 			{

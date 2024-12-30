@@ -1,14 +1,17 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
+import { ChatBedrockConverse } from '@langchain/aws';
 import {
 	NodeConnectionType,
-	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
+	type ISupplyDataFunctions,
 	type SupplyData,
 } from 'n8n-workflow';
-import { ChatBedrock } from 'langchain/chat_models/bedrock';
-import { logWrapper } from '../../../utils/logWrapper';
-import { getConnectionHintNoticeField } from '../../../utils/sharedFields';
+
+import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
+import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
+import { N8nLlmTracing } from '../N8nLlmTracing';
 
 export class LmChatAwsBedrock implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,7 +28,8 @@ export class LmChatAwsBedrock implements INodeType {
 		codex: {
 			categories: ['AI'],
 			subcategories: {
-				AI: ['Language Models'],
+				AI: ['Language Models', 'Root Nodes'],
+				'Language Models': ['Chat Models (Recommended)'],
 			},
 			resources: {
 				primaryDocumentation: [
@@ -64,7 +68,7 @@ export class LmChatAwsBedrock implements INodeType {
 						routing: {
 							request: {
 								method: 'GET',
-								url: '/foundation-models?&byOutputModality=TEXT',
+								url: '/foundation-models?&byOutputModality=TEXT&byInferenceType=ON_DEMAND',
 							},
 							output: {
 								postReceive: [
@@ -72,13 +76,6 @@ export class LmChatAwsBedrock implements INodeType {
 										type: 'rootProperty',
 										properties: {
 											property: 'modelSummaries',
-										},
-									},
-									{
-										type: 'filter',
-										properties: {
-											// Not a foundational model
-											pass: "={{ !['anthropic.claude-instant-v1-100k'].includes($responseItem.modelId) }}",
 										},
 									},
 									{
@@ -137,7 +134,7 @@ export class LmChatAwsBedrock implements INodeType {
 		],
 	};
 
-	async supplyData(this: IExecuteFunctions, itemIndex: number): Promise<SupplyData> {
+	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('aws');
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
@@ -145,7 +142,7 @@ export class LmChatAwsBedrock implements INodeType {
 			maxTokensToSample: number;
 		};
 
-		const model = new ChatBedrock({
+		const model = new ChatBedrockConverse({
 			region: credentials.region as string,
 			model: modelName,
 			temperature: options.temperature,
@@ -155,10 +152,12 @@ export class LmChatAwsBedrock implements INodeType {
 				accessKeyId: credentials.accessKeyId as string,
 				sessionToken: credentials.sessionToken as string,
 			},
+			callbacks: [new N8nLlmTracing(this)],
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this),
 		});
 
 		return {
-			response: logWrapper(model, this),
+			response: model,
 		};
 	}
 }

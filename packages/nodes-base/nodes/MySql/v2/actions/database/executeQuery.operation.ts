@@ -6,12 +6,11 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import type { QueryRunner, QueryWithValues } from '../../helpers/interfaces';
-
-import { prepareQueryAndReplacements, replaceEmptyStringsByNulls } from '../../helpers/utils';
-
-import { optionsCollection } from '../common.descriptions';
 import { getResolvables, updateDisplayOptions } from '@utils/utilities';
+
+import type { QueryRunner, QueryWithValues } from '../../helpers/interfaces';
+import { prepareQueryAndReplacements, replaceEmptyStringsByNulls } from '../../helpers/utils';
+import { optionsCollection } from '../common.descriptions';
 
 const properties: INodeProperties[] = [
 	{
@@ -26,7 +25,6 @@ const properties: INodeProperties[] = [
 		noDataExpression: true,
 		typeOptions: {
 			editor: 'sqlEditor',
-			rows: 5,
 			sqlDialect: 'MySQL',
 		},
 		hint: 'Consider using query parameters to prevent SQL injection attacks. Add them in the options below',
@@ -81,6 +79,13 @@ export async function execute(
 		}
 
 		const preparedQuery = prepareQueryAndReplacements(rawQuery, values);
+
+		if ((nodeOptions.nodeVersion as number) >= 2.3) {
+			const parsedNumbers = preparedQuery.values.map((value) => {
+				return Number(value) ? Number(value) : value;
+			});
+			preparedQuery.values = parsedNumbers;
+		}
 
 		queries.push(preparedQuery);
 	}

@@ -1,7 +1,33 @@
+<script setup lang="ts">
+import type { WorkerStatus } from '@n8n/api-types';
+import WorkerAccordion from './WorkerAccordion.ee.vue';
+import { useClipboard } from '@/composables/useClipboard';
+import { useI18n } from '@/composables/useI18n';
+import { useToast } from '@/composables/useToast';
+
+const props = defineProps<{
+	items: WorkerStatus['interfaces'];
+}>();
+
+const i18n = useI18n();
+const clipboard = useClipboard();
+const { showMessage } = useToast();
+
+function onCopyToClipboard(content: string) {
+	try {
+		void clipboard.copy(content);
+		showMessage({
+			title: i18n.baseText('workerList.item.copyAddressToClipboard'),
+			type: 'success',
+		});
+	} catch {}
+}
+</script>
+
 <template>
 	<WorkerAccordion icon="tasks" icon-color="black" :initial-expanded="false">
 		<template #title>
-			{{ $locale.baseText('workerList.item.netListTitle') }} ({{ items.length }})
+			{{ i18n.baseText('workerList.item.netListTitle') }} ({{ items.length }})
 		</template>
 		<template #content>
 			<div v-if="props.items.length > 0" :class="$style.accordionItems">
@@ -9,7 +35,7 @@
 					v-for="item in props.items"
 					:key="item.address"
 					:class="$style.accordionItem"
-					@click="copyToClipboard(item.address)"
+					@click="onCopyToClipboard(item.address)"
 				>
 					{{ item.family }}: <span :class="$style.clickable">{{ item.address }}</span>
 					{{ item.internal ? '(internal)' : '' }}
@@ -18,33 +44,6 @@
 		</template>
 	</WorkerAccordion>
 </template>
-
-<script setup lang="ts">
-import type { IPushDataWorkerStatusPayload } from '@/Interface';
-import WorkerAccordion from './WorkerAccordion.ee.vue';
-import { useCopyToClipboard } from '@/composables/useCopyToClipboard';
-import { useI18n } from '@/composables/useI18n';
-import { useToast } from '@/composables/useToast';
-
-const props = defineProps<{
-	items: IPushDataWorkerStatusPayload['interfaces'];
-}>();
-
-const i18n = useI18n();
-
-function copyToClipboard(content: string) {
-	const copyToClipboardFn = useCopyToClipboard();
-	const { showMessage } = useToast();
-
-	try {
-		copyToClipboardFn(content);
-		showMessage({
-			title: i18n.baseText('workerList.item.copyAddressToClipboard'),
-			type: 'success',
-		});
-	} catch {}
-}
-</script>
 
 <style lang="scss" module>
 .accordionItems {

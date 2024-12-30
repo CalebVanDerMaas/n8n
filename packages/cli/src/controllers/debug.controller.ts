@@ -1,34 +1,39 @@
-import { Service } from 'typedi';
-import { Get, RestController } from '@/decorators';
-import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
-import { MultiMainSetup } from '@/services/orchestration/main/MultiMainSetup.ee';
+import { InstanceSettings } from 'n8n-core';
+
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { WorkflowRepository } from '@/databases/repositories/workflow.repository';
-import { In } from 'typeorm';
+import { Get, RestController } from '@/decorators';
+import { OrchestrationService } from '@/services/orchestration.service';
 
 @RestController('/debug')
-@Service()
 export class DebugController {
 	constructor(
-		private readonly multiMainSetup: MultiMainSetup,
-		private readonly activeWorkflowRunner: ActiveWorkflowRunner,
+		private readonly orchestrationService: OrchestrationService,
+		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
-	@Get('/multi-main-setup')
+	@Get('/multi-main-setup', { skipAuth: true })
 	async getMultiMainSetupDetails() {
-		const leaderKey = await this.multiMainSetup.fetchLeaderKey();
+		const leaderKey = await this.orchestrationService.multiMainSetup.fetchLeaderKey();
 
-		const activeWorkflows = await this.workflowRepository.find({
-			select: ['id', 'name'],
-			where: { id: In(this.activeWorkflowRunner.allActiveInMemory()) },
-		});
+		const triggersAndPollers = await this.workflowRepository.findIn(
+			this.activeWorkflowManager.allActiveInMemory(),
+		);
 
-		const activationErrors = await this.activeWorkflowRunner.getAllWorkflowActivationErrors();
+		const webhooks = await this.workflowRepository.findWebhookBasedActiveWorkflows();
+
+		const activationErrors = await this.activeWorkflowManager.getAllWorkflowActivationErrors();
 
 		return {
-			instanceId: this.multiMainSetup.instanceId,
+			instanceId: this.instanceSettings.instanceId,
 			leaderKey,
-			activeWorkflows,
+			isLeader: this.instanceSettings.isLeader,
+			activeWorkflows: {
+				webhooks, // webhook-based active workflows
+				triggersAndPollers, // poller- and trigger-based active workflows
+			},
 			activationErrors,
 		};
 	}

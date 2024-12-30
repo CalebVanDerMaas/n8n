@@ -1,9 +1,110 @@
+<script setup lang="ts">
+import { nextTick, onBeforeMount, onMounted, ref, watch } from 'vue';
+import type { ITemplatesCollection } from '@/Interface';
+import Card from '@/components/CollectionWorkflowCard.vue';
+import TemplatesInfoCard from '@/components/TemplatesInfoCard.vue';
+import { VueAgile } from 'vue-agile';
+
+type SliderRef = InstanceType<typeof VueAgile>;
+
+const props = withDefaults(
+	defineProps<{
+		collections: ITemplatesCollection[];
+		loading?: boolean;
+		showItemCount?: boolean;
+		showNavigation?: boolean;
+		cardsWidth?: string;
+	}>(),
+	{
+		showItemCount: true,
+		showNavigation: true,
+		cardsWidth: '240px',
+		loading: false,
+	},
+);
+
+const emit = defineEmits<{
+	openCollection: [payload: { event: MouseEvent; id: number }];
+}>();
+
+const carouselScrollPosition = ref(0);
+const cardWidth = ref(parseInt(props.cardsWidth, 10));
+const scrollEnd = ref(false);
+const listElement = ref<null | Element>(null);
+const sliderRef = ref<SliderRef>(null);
+
+const updateCarouselScroll = () => {
+	if (listElement.value) {
+		carouselScrollPosition.value = Number(listElement.value.scrollLeft.toFixed());
+
+		const width = listElement.value.clientWidth;
+		const scrollWidth = listElement.value.scrollWidth;
+		const scrollLeft = carouselScrollPosition.value;
+		scrollEnd.value = scrollWidth - width <= scrollLeft + 7;
+	}
+};
+
+const onCardClick = (event: MouseEvent, id: number) => {
+	emit('openCollection', { event, id });
+};
+
+const scrollLeft = () => {
+	if (listElement.value) {
+		listElement.value.scrollBy({ left: -(cardWidth.value * 2), top: 0, behavior: 'smooth' });
+	}
+};
+
+const scrollRight = () => {
+	if (listElement.value) {
+		listElement.value.scrollBy({ left: cardWidth.value * 2, top: 0, behavior: 'smooth' });
+	}
+};
+
+watch(
+	() => props.collections,
+	() => {
+		setTimeout(() => {
+			updateCarouselScroll();
+		}, 0);
+	},
+);
+
+watch(
+	() => props.loading,
+	() => {
+		setTimeout(() => {
+			updateCarouselScroll();
+		}, 0);
+	},
+);
+
+onMounted(async () => {
+	await nextTick();
+
+	if (!sliderRef.value) {
+		return;
+	}
+
+	listElement.value = sliderRef.value.$el.querySelector('.agile__list');
+	if (listElement.value) {
+		listElement.value.addEventListener('scroll', updateCarouselScroll);
+	}
+});
+
+onBeforeMount(() => {
+	if (sliderRef.value) {
+		sliderRef.value.destroy();
+	}
+	window.addEventListener('scroll', updateCarouselScroll);
+});
+</script>
+
 <template>
-	<div :class="$style.container" v-show="loading || collections.length">
-		<agile
-			ref="slider"
+	<div v-show="loading || collections.length" :class="$style.container">
+		<VueAgile
+			ref="sliderRef"
 			:dots="false"
-			:navButtons="false"
+			:nav-buttons="false"
 			:infinite="false"
 			:slides-to-show="4"
 			@after-change="updateCarouselScroll"
@@ -11,14 +112,14 @@
 			<Card v-for="n in loading ? 4 : 0" :key="`loading-${n}`" :loading="loading" />
 			<TemplatesInfoCard
 				v-for="collection in loading ? [] : collections"
-				data-test-id="templates-info-card"
 				:key="collection.id"
+				data-test-id="templates-info-card"
 				:collection="collection"
-				:showItemCount="showItemCount"
+				:show-item-count="showItemCount"
 				:width="cardsWidth"
 				@click="(e) => onCardClick(e, collection.id)"
 			/>
-		</agile>
+		</VueAgile>
 		<button
 			v-show="showNavigation && carouselScrollPosition > 0"
 			:class="{ [$style.leftButton]: true }"
@@ -35,115 +136,6 @@
 		</button>
 	</div>
 </template>
-
-<script lang="ts">
-import { defineComponent } from 'vue';
-import type { PropType } from 'vue';
-import type { ITemplatesCollection } from '@/Interface';
-import Card from '@/components/CollectionWorkflowCard.vue';
-import TemplatesInfoCard from '@/components/TemplatesInfoCard.vue';
-import { VueAgile } from 'vue-agile';
-
-import { genericHelpers } from '@/mixins/genericHelpers';
-
-type SliderRef = InstanceType<typeof VueAgile>;
-
-export default defineComponent({
-	name: 'TemplatesInfoCarousel',
-	mixins: [genericHelpers],
-	props: {
-		collections: {
-			type: Array as PropType<ITemplatesCollection[]>,
-		},
-		loading: {
-			type: Boolean,
-		},
-		showItemCount: {
-			type: Boolean,
-			default: true,
-		},
-		showNavigation: {
-			type: Boolean,
-			default: true,
-		},
-		cardsWidth: {
-			type: String,
-			default: '240px',
-		},
-	},
-	watch: {
-		collections() {
-			setTimeout(() => {
-				this.updateCarouselScroll();
-			}, 0);
-		},
-		loading() {
-			setTimeout(() => {
-				this.updateCarouselScroll();
-			}, 0);
-		},
-	},
-	components: {
-		Card,
-		TemplatesInfoCard,
-		agile: VueAgile,
-	},
-	data() {
-		return {
-			carouselScrollPosition: 0,
-			cardWidth: parseInt(this.cardsWidth, 10),
-			sliderWidth: 0,
-			scrollEnd: false,
-			listElement: null as null | Element,
-		};
-	},
-	methods: {
-		updateCarouselScroll() {
-			if (this.listElement) {
-				this.carouselScrollPosition = Number(this.listElement.scrollLeft.toFixed());
-
-				const width = this.listElement.clientWidth;
-				const scrollWidth = this.listElement.scrollWidth;
-				const scrollLeft = this.carouselScrollPosition;
-				this.scrollEnd = scrollWidth - width <= scrollLeft + 7;
-			}
-		},
-		onCardClick(event: MouseEvent, id: string) {
-			this.$emit('openCollection', { event, id });
-		},
-		scrollLeft() {
-			if (this.listElement) {
-				this.listElement.scrollBy({ left: -(this.cardWidth * 2), top: 0, behavior: 'smooth' });
-			}
-		},
-		scrollRight() {
-			if (this.listElement) {
-				this.listElement.scrollBy({ left: this.cardWidth * 2, top: 0, behavior: 'smooth' });
-			}
-		},
-	},
-	async mounted() {
-		await this.$nextTick();
-		const sliderRef = this.$refs.slider as SliderRef | undefined;
-		if (!sliderRef) {
-			return;
-		}
-
-		this.listElement = sliderRef.$el.querySelector('.agile__list');
-		if (this.listElement) {
-			this.listElement.addEventListener('scroll', this.updateCarouselScroll);
-		}
-	},
-	beforeUnmount() {
-		const sliderRef = this.$refs.slider as SliderRef | undefined;
-		if (sliderRef) {
-			sliderRef.destroy();
-		}
-
-		window.removeEventListener('scroll', this.updateCarouselScroll);
-	},
-});
-</script>
 
 <style lang="scss" module>
 .container {
@@ -228,6 +220,10 @@ export default defineComponent({
 		padding-bottom: var(--spacing-2xs);
 		overflow-x: auto;
 		transition: all 1s ease-in-out;
+	}
+
+	&__track {
+		width: 50px;
 	}
 }
 </style>

@@ -8,8 +8,12 @@ import {
 	type INodeExecutionData,
 	type INodeType,
 	type INodeTypeDescription,
+	NodeConnectionType,
 } from 'n8n-workflow';
-import { shuffleArray, sortByCode } from './utils';
+
+import { shuffleArray } from '@utils/utilities';
+
+import { sortByCode } from './utils';
 
 export class Sort implements INodeType {
 	description: INodeTypeDescription = {
@@ -23,8 +27,8 @@ export class Sort implements INodeType {
 		defaults: {
 			name: 'Sort',
 		},
-		inputs: ['main'],
-		outputs: ['main'],
+		inputs: [NodeConnectionType.Main],
+		outputs: [NodeConnectionType.Main],
 		properties: [
 			{
 				displayName: 'Type',
@@ -106,7 +110,7 @@ export class Sort implements INodeType {
 				type: 'string',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
-					editor: 'code',
+					editor: 'jsEditor',
 					rows: 10,
 				},
 				default: `// The two items to compare are in the variables a and b

@@ -1,4 +1,4 @@
-import { Service } from 'typedi';
+import { GlobalConfig } from '@n8n/config';
 import {
 	DataSource,
 	Repository,
@@ -8,33 +8,40 @@ import {
 	type FindOptionsWhere,
 	type FindOptionsSelect,
 	type FindManyOptions,
-	type EntityManager,
-	type DeleteResult,
-	Not,
-} from 'typeorm';
+	type FindOptionsRelations,
+} from '@n8n/typeorm';
+import { Service } from 'typedi';
+
+import config from '@/config';
 import type { ListQuery } from '@/requests';
 import { isStringArray } from '@/utils';
-import config from '@/config';
-import { WorkflowEntity } from '../entities/WorkflowEntity';
-import { SharedWorkflow } from '../entities/SharedWorkflow';
+
+import { WebhookEntity } from '../entities/webhook-entity';
+import { WorkflowEntity } from '../entities/workflow-entity';
 
 @Service()
 export class WorkflowRepository extends Repository<WorkflowEntity> {
-	constructor(dataSource: DataSource) {
+	constructor(
+		dataSource: DataSource,
+		private readonly globalConfig: GlobalConfig,
+	) {
 		super(WorkflowEntity, dataSource.manager);
 	}
 
-	async get(where: FindOptionsWhere<WorkflowEntity>, options?: { relations: string[] }) {
-		return this.findOne({
+	async get(
+		where: FindOptionsWhere<WorkflowEntity>,
+		options?: { relations: string[] | FindOptionsRelations<WorkflowEntity> },
+	) {
+		return await this.findOne({
 			where,
 			relations: options?.relations,
 		});
 	}
 
 	async getAllActive() {
-		return this.find({
+		return await this.find({
 			where: { active: true },
-			relations: ['shared', 'shared.user', 'shared.user.globalRole', 'shared.role'],
+			relations: { shared: { project: { projectRelations: true } } },
 		});
 	}
 
@@ -47,10 +54,20 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	async findById(workflowId: string) {
-		return this.findOne({
+		return await this.findOne({
 			where: { id: workflowId },
-			relations: ['shared', 'shared.user', 'shared.user.globalRole', 'shared.role'],
+			relations: { shared: { project: { projectRelations: true } } },
 		});
+	}
+
+	async findByIds(workflowIds: string[], { fields }: { fields?: string[] } = {}) {
+		const options: FindManyOptions<WorkflowEntity> = {
+			where: { id: In(workflowIds) },
+		};
+
+		if (fields?.length) options.select = fields as FindOptionsSelect<WorkflowEntity>;
+
+		return await this.find(options);
 	}
 
 	async getActiveTriggerCount() {
@@ -60,37 +77,15 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return totalTriggerCount ?? 0;
 	}
 
-	async getSharings(
-		transaction: EntityManager,
-		workflowId: string,
-		relations = ['shared'],
-	): Promise<SharedWorkflow[]> {
-		const workflow = await transaction.findOne(WorkflowEntity, {
-			where: { id: workflowId },
-			relations,
-		});
-		return workflow?.shared ?? [];
-	}
-
-	async pruneSharings(
-		transaction: EntityManager,
-		workflowId: string,
-		userIds: string[],
-	): Promise<DeleteResult> {
-		return transaction.delete(SharedWorkflow, {
-			workflowId,
-			userId: Not(In(userIds)),
-		});
-	}
-
 	async updateWorkflowTriggerCount(id: string, triggerCount: number): Promise<UpdateResult> {
 		const qb = this.createQueryBuilder('workflow');
-		return qb
+		const dbType = this.globalConfig.database.type;
+		return await qb
 			.update()
 			.set({
 				triggerCount,
 				updatedAt: () => {
-					if (['mysqldb', 'mariadb'].includes(config.getEnv('database.type'))) {
+					if (['mysqldb', 'mariadb'].includes(dbType)) {
 						return 'updatedAt';
 					}
 					return '"updatedAt"';
@@ -100,8 +95,14 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.execute();
 	}
 
-	async getMany(sharedWorkflowIds: string[], options?: ListQuery.Options) {
+	async getMany(sharedWorkflowIds: string[], originalOptions: ListQuery.Options = {}) {
+		const options = structuredClone(originalOptions);
 		if (sharedWorkflowIds.length === 0) return { workflows: [], count: 0 };
+
+		if (typeof options?.filter?.projectId === 'string' && options.filter.projectId !== '') {
+			options.filter.shared = { projectId: options.filter.projectId };
+			delete options.filter.projectId;
+		}
 
 		const where: FindOptionsWhere<WorkflowEntity> = {
 			...options?.filter,
@@ -124,8 +125,8 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 					createdAt: true,
 					updatedAt: true,
 					versionId: true,
-					shared: { userId: true, roleId: true },
-			  };
+					shared: { role: true },
+				};
 
 		delete select?.ownedBy; // remove non-entity field, handled after query
 
@@ -141,7 +142,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			select.tags = { id: true, name: true };
 		}
 
-		if (isOwnedByIncluded) relations.push('shared', 'shared.role', 'shared.user');
+		if (isOwnedByIncluded) relations.push('shared', 'shared.project');
 
 		if (typeof where.name === 'string' && where.name !== '') {
 			where.name = Like(`%${where.name}%`);
@@ -174,9 +175,39 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	async findStartingWith(workflowName: string): Promise<Array<{ name: string }>> {
-		return this.find({
+		return await this.find({
 			select: ['name'],
 			where: { name: Like(`${workflowName}%`) },
 		});
+	}
+
+	async findIn(workflowIds: string[]) {
+		return await this.find({
+			select: ['id', 'name'],
+			where: { id: In(workflowIds) },
+		});
+	}
+
+	async findWebhookBasedActiveWorkflows() {
+		return await (this.createQueryBuilder('workflow')
+			.select('DISTINCT workflow.id, workflow.name')
+			.innerJoin(WebhookEntity, 'webhook_entity', 'workflow.id = webhook_entity.workflowId')
+			.execute() as Promise<Array<{ id: string; name: string }>>);
+	}
+
+	async updateActiveState(workflowId: string, newState: boolean) {
+		return await this.update({ id: workflowId }, { active: newState });
+	}
+
+	async deactivateAll() {
+		return await this.update({ active: true }, { active: false });
+	}
+
+	async activateAll() {
+		return await this.update({ active: false }, { active: true });
+	}
+
+	async findByActiveState(activeState: boolean) {
+		return await this.findBy({ active: activeState });
 	}
 }

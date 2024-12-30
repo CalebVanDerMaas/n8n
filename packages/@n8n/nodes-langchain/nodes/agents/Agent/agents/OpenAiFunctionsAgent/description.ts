@@ -1,4 +1,5 @@
 import type { INodeProperties } from 'n8n-workflow';
+
 import { SYSTEM_MESSAGE } from './prompt';
 
 export const openAiFunctionsAgentProperties: INodeProperties[] = [
@@ -27,6 +28,19 @@ export const openAiFunctionsAgentProperties: INodeProperties[] = [
 			},
 		},
 		default: '={{ $json.chat_input }}',
+	},
+	{
+		displayName: 'Text',
+		name: 'text',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				agent: ['openAiFunctionsAgent'],
+				'@version': [1.2],
+			},
+		},
+		default: '={{ $json.chatInput }}',
 	},
 	{
 		displayName: 'Options',

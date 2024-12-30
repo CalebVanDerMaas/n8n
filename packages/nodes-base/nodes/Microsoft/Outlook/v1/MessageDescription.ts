@@ -452,7 +452,7 @@ export const messageFields: INodeProperties[] = [
 				name: 'categories',
 				type: 'multiOptions',
 				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
@@ -559,9 +559,9 @@ export const messageFields: INodeProperties[] = [
 
 	// File operations
 	{
-		displayName: 'Binary Property',
+		displayName: 'Put Output File in Field',
 		name: 'binaryPropertyName',
-		description: 'Name of the binary property to which to write the data of the read file',
+		hint: 'The name of the output binary field to put the file in',
 		type: 'string',
 		required: true,
 		default: 'data',

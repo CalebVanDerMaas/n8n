@@ -1,10 +1,11 @@
 import type { Request } from 'express';
-import { ICredentialTypes } from 'n8n-workflow';
-import { join } from 'path';
 import { access } from 'fs/promises';
-import { Authorized, Get, RestController } from '@/decorators';
-import { Config } from '@/config';
+import { join } from 'path';
+
+import config from '@/config';
 import { NODES_BASE_DIR } from '@/constants';
+import { CredentialTypes } from '@/credential-types';
+import { Get, RestController } from '@/decorators';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 
@@ -15,13 +16,9 @@ export declare namespace TranslationRequest {
 	export type Credential = Request<{}, {}, {}, { credentialType: string }>;
 }
 
-@Authorized()
 @RestController('/')
 export class TranslationController {
-	constructor(
-		private config: Config,
-		private credentialTypes: ICredentialTypes,
-	) {}
+	constructor(private readonly credentialTypes: CredentialTypes) {}
 
 	@Get('/credential-translation')
 	async getCredentialTranslation(req: TranslationRequest.Credential) {
@@ -30,7 +27,7 @@ export class TranslationController {
 		if (!this.credentialTypes.recognizes(credentialType))
 			throw new BadRequestError(`Invalid Credential type: "${credentialType}"`);
 
-		const defaultLocale = this.config.getEnv('defaultLocale');
+		const defaultLocale = config.getEnv('defaultLocale');
 		const translationPath = join(
 			CREDENTIAL_TRANSLATIONS_DIR,
 			defaultLocale,
@@ -57,7 +54,7 @@ export class TranslationController {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			return require(NODE_HEADERS_PATH);
 		} catch (error) {
-			throw new InternalServerError('Failed to load headers file');
+			throw new InternalServerError('Failed to load headers file', error);
 		}
 	}
 }

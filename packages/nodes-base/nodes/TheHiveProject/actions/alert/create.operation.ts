@@ -1,3 +1,5 @@
+import FormData from 'form-data';
+import set from 'lodash/set';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -5,13 +7,11 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
-import set from 'lodash/set';
-
-import FormData from 'form-data';
-import { theHiveApiRequest } from '../../transport';
-import { fixFieldType, prepareInputItem, splitAndTrim } from '../../helpers/utils';
-import { observableTypeOptions } from '../../descriptions';
 import { updateDisplayOptions, wrapData } from '@utils/utilities';
+
+import { observableTypeOptions } from '../../descriptions';
+import { fixFieldType, prepareInputItem, splitAndTrim } from '../../helpers/utils';
+import { theHiveApiRequest } from '../../transport';
 
 const properties: INodeProperties[] = [
 	{
@@ -59,9 +59,10 @@ const properties: INodeProperties[] = [
 						default: '',
 					},
 					{
-						displayName: 'Binary Property',
+						displayName: 'Input Binary Field',
 						name: 'binaryProperty',
 						type: 'string',
+						hint: 'The name of the input binary field containing the file to be written',
 						displayOptions: {
 							show: {
 								dataType: ['file'],

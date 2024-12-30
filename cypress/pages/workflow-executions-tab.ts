@@ -7,6 +7,7 @@ export class WorkflowExecutionsTab extends BasePage {
 	getters = {
 		executionsTabButton: () => cy.getByTestId('radio-button-executions'),
 		executionsSidebar: () => cy.getByTestId('executions-sidebar'),
+		executionsEmptyList: () => cy.getByTestId('execution-list-empty'),
 		autoRefreshCheckBox: () => cy.getByTestId('auto-refresh-checkbox'),
 		executionsList: () => cy.getByTestId('current-executions-list'),
 		executionListItems: () => this.getters.executionsList().find('div.execution-card'),
@@ -24,15 +25,23 @@ export class WorkflowExecutionsTab extends BasePage {
 		executionPreviewId: () =>
 			this.getters.executionPreviewDetails().find('[data-test-id="execution-preview-id"]'),
 		executionDebugButton: () => cy.getByTestId('execution-debug-button'),
+		workflowExecutionPreviewIframe: () => cy.getByTestId('workflow-preview-iframe'),
 	};
+
 	actions = {
 		toggleNodeEnabled: (nodeName: string) => {
+			cy.ifCanvasVersion(
+				() => {},
+				() => {
+					cy.get('body').click(); // Cancel selection if it exists
+				},
+			);
 			workflowPage.getters.canvasNodeByName(nodeName).click();
 			cy.get('body').type('d', { force: true });
 		},
 		createManualExecutions: (count: number) => {
 			for (let i = 0; i < count; i++) {
-				cy.intercept('POST', '/rest/workflows/run').as('workflowExecution');
+				cy.intercept('POST', '/rest/workflows/**/run?**').as('workflowExecution');
 				workflowPage.actions.executeWorkflow();
 				cy.wait('@workflowExecution');
 			}

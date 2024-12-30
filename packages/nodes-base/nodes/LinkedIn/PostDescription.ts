@@ -54,7 +54,7 @@ export const postFields: INodeProperties[] = [
 		default: '',
 		required: true,
 		description:
-			'Person as which the post should be posted as. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'Person as which the post should be posted as. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -121,7 +121,7 @@ export const postFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Binary Property',
+		displayName: 'Input Binary Field',
 		displayOptions: {
 			show: {
 				operation: ['create'],
@@ -132,7 +132,7 @@ export const postFields: INodeProperties[] = [
 		name: 'binaryPropertyName',
 		type: 'string',
 		default: 'data',
-		description: 'Object property name which holds binary data',
+		hint: 'The name of the input binary field containing the file to be written',
 		required: true,
 	},
 	{
@@ -173,11 +173,11 @@ export const postFields: INodeProperties[] = [
 				},
 			},
 			{
-				displayName: 'Thumbnail Binary Property',
+				displayName: 'Input Binary Field',
 				name: 'thumbnailBinaryPropertyName',
 				type: 'string',
 				default: 'data',
-				description: 'Object property name which holds binary data for the article thumbnail',
+				hint: 'The name of the input binary field containing the file for the article thumbnail',
 				displayOptions: {
 					show: {
 						'/shareMediaCategory': ['ARTICLE'],

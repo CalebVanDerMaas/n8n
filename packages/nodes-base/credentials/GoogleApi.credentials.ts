@@ -1,17 +1,14 @@
+import type { AxiosRequestConfig } from 'axios';
+import axios from 'axios';
+import jwt from 'jsonwebtoken';
+import moment from 'moment-timezone';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
 	IHttpRequestOptions,
 	INodeProperties,
+	Icon,
 } from 'n8n-workflow';
-
-import moment from 'moment-timezone';
-
-import jwt from 'jsonwebtoken';
-
-import type { AxiosRequestConfig } from 'axios';
-
-import axios from 'axios';
 
 export class GoogleApi implements ICredentialType {
 	name = 'googleApi';
@@ -20,7 +17,7 @@ export class GoogleApi implements ICredentialType {
 
 	documentationUrl = 'google/service-account';
 
-	icon = 'file:icons/Google.svg';
+	icon: Icon = 'file:icons/Google.svg';
 
 	properties: INodeProperties[] = [
 		{

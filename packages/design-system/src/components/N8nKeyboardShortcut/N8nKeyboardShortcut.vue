@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+
 import { useDeviceSupport } from '../../composables/useDeviceSupport';
 import type { KeyboardShortcut } from '../../types/keyboardshortcut';
 
@@ -31,7 +32,7 @@ const keys = computed(() => {
 
 <template>
 	<div :class="$style.shortcut">
-		<div v-for="key of keys" :class="$style.keyWrapper" :key="key">
+		<div v-for="key of keys" :key="key" :class="$style.keyWrapper">
 			<div :class="$style.key">{{ key }}</div>
 		</div>
 	</div>

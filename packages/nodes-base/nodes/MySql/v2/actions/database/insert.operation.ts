@@ -5,19 +5,17 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 
+import { updateDisplayOptions } from '@utils/utilities';
+
 import type {
 	QueryMode,
 	QueryRunner,
 	QueryValues,
 	QueryWithValues,
 } from '../../helpers/interfaces';
-
 import { AUTO_MAP, BATCH_MODE, DATA_MODE } from '../../helpers/interfaces';
-
-import { replaceEmptyStringsByNulls } from '../../helpers/utils';
-
+import { escapeSqlIdentifier, replaceEmptyStringsByNulls } from '../../helpers/utils';
 import { optionsCollection } from '../common.descriptions';
-import { updateDisplayOptions } from '@utils/utilities';
 
 const properties: INodeProperties[] = [
 	{
@@ -80,7 +78,7 @@ const properties: INodeProperties[] = [
 						type: 'options',
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
 						description:
-							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/" target="_blank">expression</a>',
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/" target="_blank">expression</a>',
 						typeOptions: {
 							loadOptionsMethod: 'getColumns',
 							loadOptionsDependsOn: ['table.value'],
@@ -171,11 +169,13 @@ export async function execute(
 			];
 		}
 
-		const escapedColumns = columns.map((column) => `\`${column}\``).join(', ');
+		const escapedColumns = columns.map(escapeSqlIdentifier).join(', ');
 		const placeholder = `(${columns.map(() => '?').join(',')})`;
 		const replacements = items.map(() => placeholder).join(',');
 
-		const query = `INSERT ${priority} ${ignore} INTO \`${table}\` (${escapedColumns}) VALUES ${replacements}`;
+		const query = `INSERT ${priority} ${ignore} INTO ${escapeSqlIdentifier(
+			table,
+		)} (${escapedColumns}) VALUES ${replacements}`;
 
 		const values = insertItems.reduce(
 			(acc: IDataObject[], item) => acc.concat(Object.values(item) as IDataObject[]),
@@ -214,10 +214,12 @@ export async function execute(
 				columns = Object.keys(insertItem);
 			}
 
-			const escapedColumns = columns.map((column) => `\`${column}\``).join(', ');
+			const escapedColumns = columns.map(escapeSqlIdentifier).join(', ');
 			const placeholder = `(${columns.map(() => '?').join(',')})`;
 
-			const query = `INSERT ${priority} ${ignore} INTO \`${table}\` (${escapedColumns}) VALUES ${placeholder};`;
+			const query = `INSERT ${priority} ${ignore} INTO ${escapeSqlIdentifier(
+				table,
+			)} (${escapedColumns}) VALUES ${placeholder};`;
 
 			const values = Object.values(insertItem) as QueryValues;
 

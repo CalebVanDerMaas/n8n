@@ -1,9 +1,11 @@
+import type { IZepConfig } from '@langchain/community/vectorstores/zep';
+import { ZepVectorStore } from '@langchain/community/vectorstores/zep';
 import type { IDataObject, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import type { IZepConfig } from 'langchain/vectorstores/zep';
-import { ZepVectorStore } from 'langchain/vectorstores/zep';
+
+import { metadataFilterField } from '@utils/sharedFields';
+
 import { createVectorStoreNode } from '../shared/createVectorStoreNode';
-import { metadataFilterField } from '../../../utils/sharedFields';
 
 const embeddingDimensions: INodeProperties = {
 	displayName: 'Embedding Dimensions',
@@ -44,7 +46,7 @@ const retrieveFields: INodeProperties[] = [
 	},
 ];
 
-export const VectorStoreZep = createVectorStoreNode({
+export class VectorStoreZep extends createVectorStoreNode({
 	meta: {
 		displayName: 'Zep Vector Store',
 		name: 'vectorStoreZep',
@@ -79,10 +81,10 @@ export const VectorStoreZep = createVectorStoreNode({
 				embeddingDimensions?: number;
 			}) || {};
 
-		const credentials = (await context.getCredentials('zepApi')) as {
+		const credentials = await context.getCredentials<{
 			apiKey?: string;
 			apiUrl: string;
-		};
+		}>('zepApi');
 
 		const zepConfig: IZepConfig = {
 			apiUrl: credentials.apiUrl,
@@ -102,10 +104,10 @@ export const VectorStoreZep = createVectorStoreNode({
 				embeddingDimensions?: number;
 			}) || {};
 
-		const credentials = (await context.getCredentials('zepApi')) as {
+		const credentials = await context.getCredentials<{
 			apiKey?: string;
 			apiUrl: string;
-		};
+		}>('zepApi');
 
 		const zepConfig = {
 			apiUrl: credentials.apiUrl,
@@ -130,4 +132,4 @@ export const VectorStoreZep = createVectorStoreNode({
 			throw new NodeOperationError(context.getNode(), error as Error, { itemIndex });
 		}
 	},
-});
+}) {}
